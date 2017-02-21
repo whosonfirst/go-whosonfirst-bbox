@@ -19,8 +19,8 @@ type BBOX interface {
 	MinY() float64
 	MaxX() float64
 	MaxY() float64
-	// SouthWest() *COORD
-	// NorthEast() *COORD
+	SouthWest() COORD
+	NorthEast() COORD
 }
 
 func NewCoordinate(x float64, y float64) (*Coordinate, error) {
@@ -136,7 +136,7 @@ func (b *BoundingBox) MaxY() float64 {
 	return b.North()
 }
 
-func (b *BoundingBox) SouthWest() *Coordinate {
+func (b *BoundingBox) SouthWest() COORD {
 
 	c := Coordinate{
 		latitude:  b.South(),
@@ -146,7 +146,7 @@ func (b *BoundingBox) SouthWest() *Coordinate {
 	return &c
 }
 
-func (b *BoundingBox) NorthEast() *Coordinate {
+func (b *BoundingBox) NorthEast() COORD {
 
 	c := Coordinate{
 		latitude:  b.North(),
