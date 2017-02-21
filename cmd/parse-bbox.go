@@ -10,8 +10,9 @@ import (
 func main() {
 
 	var bbox = flag.String("bbox", "", "...")
-	var scheme = flag.String("scheme", "swne", "...")
-	var order = flag.String("order", "latlon", "...")
+	var scheme = flag.String("scheme", "cardinal", "...")
+	var order = flag.String("order", "swne", "...")
+	var separator = flag.String("separator", ",", "...")
 
 	flag.Parse()
 
@@ -23,8 +24,13 @@ func main() {
 
 	p.Scheme = *scheme
 	p.Order = *order
+	p.Separator = *separator
 
 	bb, err := p.Parse(*bbox)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	fmt.Print(bb)
 }

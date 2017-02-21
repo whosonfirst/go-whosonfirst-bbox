@@ -17,6 +17,7 @@ rmdeps:
 build:	fmt bin
 
 deps:
+	@GOPATH=$(GOPATH) go get -u "github.com/facebookgo/grace/gracehttp"
 	@GOPATH=$(GOPATH) go get -u "github.com/thisisaaronland/go-marc"
 
 vendor-deps: rmdeps deps
@@ -32,3 +33,4 @@ fmt:
 
 bin: 	rmdeps self
 	@GOPATH=$(GOPATH) go build -o bin/parse-bbox cmd/parse-bbox.go
+	@GOPATH=$(GOPATH) go build -o bin/parse-bbox-server cmd/parse-bbox-server.go

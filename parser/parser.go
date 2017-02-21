@@ -3,31 +3,11 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"github.com/whosonfirst/go-whosonfirst-bbox"	
 	"github.com/thisisaaronland/go-marc/fields"
 	"strconv"
 	"strings"
 )
-
-// please for to be replacing me with interface{} thingies
-// defined in bbox.go
-
-type Point struct {
-	Latitude  float64
-	Longitude float64
-}
-
-func (p *Point) String() string {
-	return fmt.Sprintf("%0.6f %0.6f", p.Latitude, p.Longitude)
-}
-
-type BoundingBox struct {
-	SW Point
-	NE Point
-}
-
-func (b *BoundingBox) String() string {
-	return fmt.Sprintf("%s %s", b.SW.String(), b.NE.String())
-}
 
 type Parser struct {
 	Scheme    string
@@ -38,22 +18,20 @@ type Parser struct {
 func NewParser() (*Parser, error) {
 
 	p := Parser{
-		Scheme:    "nsew",
-		Order:     "latlon",
+		Scheme:    "cardinal",
+		Order:     "swne",
 		Separator: ",",
 	}
 
 	return &p, nil
 }
 
-func (p *Parser) Parse(bbox string) (*BoundingBox, error) {
+func (p *Parser) Parse(bbox string) (bbox.BBOX, error) {
 
 	switch p.Scheme {
 
-	case "swne":
-		return p.ParseCorners(bbox)
-	case "nsew":
-		return p.ParseSides(bbox)
+	case "cardinal":
+		return p.ParseCardinal(bbox)
 	case "marc":
 		return p.ParseMARC(bbox)
 	default:
@@ -61,107 +39,101 @@ func (p *Parser) Parse(bbox string) (*BoundingBox, error) {
 	}
 }
 
-func (p *Parser) ParseSides(bbox string) (*BoundingBox, error) {
+func (p *Parser) ParseCardinal(str_bbox string) (bbox.BBOX, error) {
 
-	var str_swlat string
-	var str_swlon string
-	var str_nelat string
-	var str_nelon string
+	var minx float64
+	var miny float64
+	var maxx float64
+	var maxy float64
+
+	var str_miny string
+	var str_minx string
+	var str_maxy string
+	var str_maxx string
 
 	var err error
 
-	parts := strings.Split(bbox, p.Separator)
+	parts := strings.Split(str_bbox, ",")
 
 	if len(parts) != 4 {
 		return nil, errors.New("Invalid bounding box")
 	}
 
-	switch p.Scheme {
-	case "nsew":
-		str_swlat = parts[1]
-		str_swlon = parts[3]
-		str_nelat = parts[0]
-		str_nelon = parts[2]
-	default:
-		return nil, errors.New("Unsupported or invalid scheme")
-	}
+	switch p.Order {
 
-	bb, err := p.ParseBbox(str_swlat, str_swlon, str_nelat, str_nelon)
-
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = p.ValidateBbox(bb)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return bb, nil
-}
-
-func (p *Parser) ParseCorners(bbox string) (*BoundingBox, error) {
-
-	var str_swlat string
-	var str_swlon string
-	var str_nelat string
-	var str_nelon string
-	var err error
-
-	parts := strings.Split(bbox, p.Separator)
-
-	if len(parts) != 4 {
-		return nil, errors.New("Invalid bounding box")
-	}
-
-	switch p.Scheme {
-
+	// SW, NE (lat,lon)
+	
 	case "swne":
 
-		if p.Order == "latlon" {
+		str_miny = parts[0]
+		str_minx = parts[1]
+		str_maxy = parts[2]
+		str_maxx = parts[3]
 
-			str_swlat = parts[0]
-			str_swlon = parts[1]
-			str_nelat = parts[2]
-			str_nelon = parts[3]
+	// SW, NE (lon,lat)
+	
+	case "wsen":
 
-		} else if p.Order == "lonlat" {
+		str_miny = parts[1]
+		str_minx = parts[0]
+		str_maxy = parts[3]
+		str_maxx = parts[2]
 
-			str_swlat = parts[0]
-			str_swlon = parts[1]
-			str_nelat = parts[2]
-			str_nelon = parts[3]
+	// NW, SE (lat,lon)
+	
+	case "nwse":
+		str_miny = parts[2]
+		str_minx = parts[1]
+		str_maxy = parts[0]
+		str_maxx = parts[3]
 
-		} else {
-			return nil, errors.New("Invalid ordering")
-		}
+	// NW, SE (lon,lat)
+	
+	case "wnes":
+		str_miny = parts[2]
+		str_minx = parts[1]
+		str_maxy = parts[0]
+		str_maxx = parts[3]
 
 	default:
-		return nil, errors.New("Invalid or unsupported scheme")
+		return nil, errors.New("Unsupported or invalid ordering")
 	}
 
-	bb, err := p.ParseBbox(str_swlat, str_swlon, str_nelat, str_nelon)
+	miny, err = strconv.ParseFloat(str_miny, 64)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.New("Invalid SW latitude parameter")
 	}
 
-	_, err = p.ValidateBbox(bb)
+	minx, err = strconv.ParseFloat(str_minx, 64)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.New("Invalid SW longitude parameter")
 	}
 
-	return bb, nil
+	maxy, err = strconv.ParseFloat(str_maxy, 64)
+
+	if err != nil {
+		return nil, errors.New("Invalid NE latitude parameter")
+	}
+
+	maxx, err = strconv.ParseFloat(str_maxx, 64)
+
+	if err != nil {
+		return nil, errors.New("Invalid NE longitude parameter")
+	}
+
+	return bbox.NewBoundingBox(minx, miny, maxx, maxy)
 }
 
-func (p *Parser) ParseMARC(bbox string) (*BoundingBox, error) {
+func (p *Parser) ParseMARC(str_bbox string) (bbox.BBOX, error) {
 
-	parsed, err := fields.Parse034(bbox)
+	parsed, err := fields.Parse034(str_bbox)
 
 	if err != nil {
-		return nil, errors.New("Invalid 034 MARC string")
+
+		msg := fmt.Sprintf("Invalid 034 MARC string %s", err)
+		return nil, errors.New(msg)
 	}
 
 	_bb, err := parsed.BoundingBox()
@@ -173,110 +145,10 @@ func (p *Parser) ParseMARC(bbox string) (*BoundingBox, error) {
 	// this is to account for the fact that we don't have an interface{} thingy
 	// to share across packages yet... (20170220/thisisaaronland)
 
-	sw := Point{
-		Latitude:  _bb.SW.Latitude,
-		Longitude: _bb.SW.Longitude,
-	}
+	minx := _bb.SW.Longitude
+	miny := _bb.SW.Latitude
+	maxx := _bb.NE.Longitude
+	maxy := _bb.NE.Latitude
 
-	ne := Point{
-		Latitude:  _bb.NE.Latitude,
-		Longitude: _bb.NE.Longitude,
-	}
-
-	bb := &BoundingBox{
-		SW: sw,
-		NE: ne,
-	}
-
-	_, err = p.ValidateBbox(bb)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return bb, nil
-}
-
-func (p *Parser) ParseBbox(str_swlat string, str_swlon string, str_nelat string, str_nelon string) (*BoundingBox, error) {
-
-	var swlat float64
-	var swlon float64
-	var nelat float64
-	var nelon float64
-	var err error
-
-	swlat, err = strconv.ParseFloat(str_swlat, 64)
-
-	if err != nil {
-		return nil, errors.New("Invalid SW latitude parameter")
-	}
-
-	swlon, err = strconv.ParseFloat(str_swlon, 64)
-
-	if err != nil {
-		return nil, errors.New("Invalid SW longitude parameter")
-	}
-
-	nelat, err = strconv.ParseFloat(str_nelat, 64)
-
-	if err != nil {
-		return nil, errors.New("Invalid NE latitude parameter")
-	}
-
-	nelon, err = strconv.ParseFloat(str_nelon, 64)
-
-	if err != nil {
-		return nil, errors.New("Invalid NE longitude parameter")
-	}
-
-	sw := Point{
-		Latitude:  swlat,
-		Longitude: swlon,
-	}
-
-	ne := Point{
-		Latitude:  nelat,
-		Longitude: nelon,
-	}
-
-	bbox := BoundingBox{
-		SW: sw,
-		NE: ne,
-	}
-
-	return &bbox, nil
-}
-
-func (p *Parser) ValidateBbox(bbox *BoundingBox) (bool, error) {
-
-	swlat := bbox.SW.Latitude
-	swlon := bbox.SW.Longitude
-	nelat := bbox.NE.Latitude
-	nelon := bbox.NE.Longitude
-
-	if swlat > 90.0 || swlat < -90.0 {
-		return false, errors.New("E_IMPOSSIBLE_LATITUDE (SW)")
-	}
-
-	if nelat > 90.0 || nelat < -90.0 {
-		return false, errors.New("E_IMPOSSIBLE_LATITUDE (NE)")
-	}
-
-	if swlon > 180.0 || swlon < -180.0 {
-		return false, errors.New("E_IMPOSSIBLE_LONGITUDE (SW)")
-	}
-
-	if nelon > 180.0 || nelon < -180.0 {
-		return false, errors.New("E_IMPOSSIBLE_LONGITUDE (ne)")
-	}
-
-	if swlat > nelat {
-		return false, errors.New("E_INVALID_LATITUDE (SW > NE)")
-	}
-
-	if swlon > nelon {
-		return false, errors.New("E_INVALID_LATITUDE (SW > NE)")
-	}
-
-	return true, nil
+	return bbox.NewBoundingBox(minx, miny, maxx, maxy)
 }
