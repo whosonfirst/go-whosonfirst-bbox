@@ -65,36 +65,38 @@ func (p *Parser) ParseCardinal(str_bbox string) (bbox.BBOX, error) {
 	
 	case "swne":
 
-		str_miny = parts[0]
 		str_minx = parts[1]
+		str_miny = parts[0]
+		str_maxx = parts[3]		
 		str_maxy = parts[2]
-		str_maxx = parts[3]
 
 	// SW, NE (lon,lat)
 	
 	case "wsen":
 
-		str_miny = parts[1]
 		str_minx = parts[0]
-		str_maxy = parts[3]
+		str_miny = parts[1]
 		str_maxx = parts[2]
+		str_maxy = parts[3]
 
 	// NW, SE (lat,lon)
 	
 	case "nwse":
+	
+		str_minx = parts[1]	
 		str_miny = parts[2]
-		str_minx = parts[1]
+		str_maxx = parts[3]		
 		str_maxy = parts[0]
-		str_maxx = parts[3]
 
 	// NW, SE (lon,lat)
 	
 	case "wnes":
-		str_miny = parts[2]
-		str_minx = parts[1]
-		str_maxy = parts[0]
-		str_maxx = parts[3]
 
+	     	str_minx = parts[1]
+		str_miny = parts[2]
+		str_maxx = parts[3]
+		str_maxy = parts[0]
+		
 	default:
 		return nil, errors.New("Unsupported or invalid ordering")
 	}

@@ -12,10 +12,10 @@ import (
 )
 
 type Response struct {
-	SWlat float64 `json:"swlat"`
-	SWlon float64 `json:"swlon"`
-	NElat float64 `json:"nelat"`
-	NElon float64 `json:"nelon"`
+	MinX float64 `json:"min_x"`
+	MinY float64 `json:"min_y"`
+	MaxX float64 `json:"max_x"`
+	MaxY float64 `json:"max_y"`
 }
 
 func main() {
@@ -61,10 +61,10 @@ func main() {
 		}
 
 		r := Response{
-			SWlat: bb.South(),
-			SWlon: bb.West(),
-			NElat: bb.North(),
-			NElon: bb.East(),
+			MinX: bb.MinX(),
+			MinY: bb.MinY(),
+			MaxX: bb.MaxX(),
+			MaxY: bb.MaxY(),
 		}
 
 		body, err := json.Marshal(r)
