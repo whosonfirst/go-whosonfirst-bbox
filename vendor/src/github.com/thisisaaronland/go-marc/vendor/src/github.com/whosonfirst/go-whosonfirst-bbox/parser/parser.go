@@ -138,5 +138,19 @@ func (p *Parser) ParseMARC(str_bbox string) (bbox.BBOX, error) {
 		return nil, errors.New(msg)
 	}
 
-	return parsed.BoundingBox()
+	_bb, err := parsed.BoundingBox()
+
+	if err != nil {
+		return nil, errors.New("Failed to derive bounding box from 034 MARC string")
+	}
+
+	// this is to account for the fact that we don't have an interface{} thingy
+	// to share across packages yet... (20170220/thisisaaronland)
+
+	minx := _bb.SW.Longitude
+	miny := _bb.SW.Latitude
+	maxx := _bb.NE.Longitude
+	maxy := _bb.NE.Latitude
+
+	return bbox.NewBoundingBox(minx, miny, maxx, maxy)
 }
